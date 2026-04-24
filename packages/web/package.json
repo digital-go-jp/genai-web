@@ -20,7 +20,7 @@
     "@floating-ui/react": "^0.27.19",
     "@headlessui/react": "^2.2.10",
     "@hookform/resolvers": "^5.2.2",
-    "aws-amplify": "^6.16.3",
+    "aws-amplify": "^6.16.4",
     "file-type": "^22.0.1",
     "immer": "^11.1.4",
     "mermaid": "^11.14.0",
