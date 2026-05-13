@@ -23,7 +23,7 @@
     "aws-amplify": "^6.17.0",
     "file-type": "^22.0.1",
     "immer": "^11.1.4",
-    "mermaid": "^11.14.0",
+    "mermaid": "^11.15.0",
     "react": "^19.2.5",
     "react-color": "^2.19.3",
     "react-dom": "^19.2.5",
