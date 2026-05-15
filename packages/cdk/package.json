@@ -20,7 +20,7 @@
   },
   "dependencies": {
     "@aws-crypto/client-node": "^4.2.2",
-    "@aws-lambda-powertools/logger": "^2.32.0",
+    "@aws-lambda-powertools/logger": "^2.33.0",
     "@aws-sdk/client-bedrock-runtime": "^3.1042.0",
     "@aws-sdk/client-cloudwatch": "^3.1042.0",
     "@aws-sdk/client-cloudwatch-logs": "^3.1042.0",
