@@ -22,7 +22,7 @@
     "@hookform/resolvers": "^5.2.2",
     "aws-amplify": "^6.17.0",
     "file-type": "^22.0.1",
-    "immer": "^11.1.4",
+    "immer": "^11.1.8",
     "mermaid": "^11.15.0",
     "react": "^19.2.5",
     "react-color": "^2.19.3",
