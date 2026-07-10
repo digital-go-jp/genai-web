@@ -37,7 +37,7 @@
     "@aws-sdk/client-transcribe": "^3.1068.0",
     "@aws-sdk/credential-providers": "^3.1068.0",
     "@aws-sdk/lib-dynamodb": "^3.1068.0",
-    "@aws-sdk/s3-request-presigner": "^3.1068.0",
+    "@aws-sdk/s3-request-presigner": "^3.1075.0",
     "@aws-solutions-constructs/aws-cloudfront-s3": "^2.102.0",
     "@cdklabs/deploy-time-build": "^0.1.5",
     "@smithy/protocol-http": "^5.4.7",
