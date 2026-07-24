@@ -42,7 +42,7 @@
     "@cdklabs/deploy-time-build": "^0.1.5",
     "@smithy/protocol-http": "^5.4.7",
     "@smithy/signature-v4": "^5.4.7",
-    "aws-cdk-lib": "^2.259.0",
+    "aws-cdk-lib": "^2.260.0",
     "aws-jwt-verify": "^5.2.1",
     "cdk-nag": "^2.38.2",
     "constructs": "^10.6.0",
