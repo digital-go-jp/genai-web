@@ -23,19 +23,19 @@
     "common:test": "npm -w packages/common run test"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.7",
-    "esbuild": "^0.28.1",
-    "jsdom": "^30.0.1",
+    "@biomejs/biome": "^2.5.15",
+    "esbuild": "^0.28.2",
+    "jsdom": "^30.1.2",
     "typescript": "^6.0.3",
-    "vite": "^8.1.0",
-    "vitest": "^4.1.10",
-    "zod": "^4.4.3"
+    "vite": "^8.3.3",
+    "vitest": "^5.0.3",
+    "zod": "^4.6.5"
   },
   "workspaces": [
     "packages/*"
   ],
   "engines": {
-    "node": "24.18.0",
+    "node": "24.21.0",
     "npm": "12.0.1"
   },
   "engineStrict": true,

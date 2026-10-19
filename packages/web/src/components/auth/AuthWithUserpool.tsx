@@ -1,5 +1,5 @@
 import { Authenticator, translations, useAuthenticator } from '@aws-amplify/ui-react';
-import { Amplify } from 'aws-amplify';
+import { Amplify, type AmplifyContext } from 'aws-amplify';
 import { type SignInInput, signIn } from 'aws-amplify/auth';
 import { I18n } from 'aws-amplify/utils';
 import React, { useEffect, useRef } from 'react';
@@ -37,19 +37,24 @@ const AuthWithUserpoolContent = (props: Props) => {
   const prevRoute = useRef<string | undefined>(undefined);
 
   const savedPasswordRef = useRef<string | undefined>(undefined);
+  const withSavedPassword = (input: SignInInput): SignInInput => {
+    if (input.password) {
+      savedPasswordRef.current = input.password;
+      return input;
+    }
+
+    if (savedPasswordRef.current) {
+      const { options: _options, ...rest } = input;
+      return { ...rest, password: savedPasswordRef.current };
+    }
+
+    return input;
+  };
   const services = {
-    handleSignIn: (input: SignInInput) => {
-      if (input.password) {
-        savedPasswordRef.current = input.password;
-      }
-
-      if (!input.password && savedPasswordRef.current) {
-        const { options: _options, ...rest } = input;
-        return signIn({ ...rest, password: savedPasswordRef.current });
-      }
-
-      return signIn(input);
-    },
+    handleSignIn: (...args: [SignInInput] | [AmplifyContext, SignInInput]) =>
+      args.length === 1
+        ? signIn(withSavedPassword(args[0]))
+        : signIn(args[0], withSavedPassword(args[1])),
   };
 
   useEffect(() => {

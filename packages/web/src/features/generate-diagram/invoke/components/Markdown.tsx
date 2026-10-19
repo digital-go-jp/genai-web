@@ -81,9 +81,7 @@ const PreRenderer = ({ children, node, ...rest }: ComponentProps<'pre'> & ExtraP
   const classNameProp = codeEl.properties?.className;
   const classNames = Array.isArray(classNameProp)
     ? classNameProp.filter((c): c is string => typeof c === 'string')
-    : typeof classNameProp === 'string'
-      ? classNameProp.split(/\s+/)
-      : [];
+    : [];
   const languageClass = classNames.find((c) => c.startsWith('language-'));
   const language = languageClass?.slice('language-'.length);
   const textNode = codeEl.children[0];
