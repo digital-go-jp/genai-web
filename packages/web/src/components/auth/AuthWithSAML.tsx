@@ -76,6 +76,34 @@ const hasOAuthErrorInUrl = (): boolean => {
   return params.has('error') || params.has('error_description');
 };
 
+let isAmplifyConfigured = false;
+
+const configureAmplify = () => {
+  if (isAmplifyConfigured) {
+    return;
+  }
+  isAmplifyConfigured = true;
+
+  Amplify.configure({
+    Auth: {
+      Cognito: {
+        userPoolId: import.meta.env.VITE_APP_USER_POOL_ID,
+        userPoolClientId: import.meta.env.VITE_APP_USER_POOL_CLIENT_ID,
+        identityPoolId: import.meta.env.VITE_APP_IDENTITY_POOL_ID,
+        loginWith: {
+          oauth: {
+            domain: samlCognitoDomainName,
+            scopes: ['openid', 'email', 'profile'],
+            redirectSignIn: [window.location.origin],
+            redirectSignOut: [`${window.location.origin}/signed-out`],
+            responseType: 'code',
+          },
+        },
+      },
+    },
+  });
+};
+
 type Props = {
   children: React.ReactNode;
 };
@@ -132,24 +160,7 @@ export const AuthWithSAML = (props: Props) => {
     }
   }, [authStatus]);
 
-  Amplify.configure({
-    Auth: {
-      Cognito: {
-        userPoolId: import.meta.env.VITE_APP_USER_POOL_ID,
-        userPoolClientId: import.meta.env.VITE_APP_USER_POOL_CLIENT_ID,
-        identityPoolId: import.meta.env.VITE_APP_IDENTITY_POOL_ID,
-        loginWith: {
-          oauth: {
-            domain: samlCognitoDomainName,
-            scopes: ['openid', 'email', 'profile'],
-            redirectSignIn: [window.location.origin],
-            redirectSignOut: [`${window.location.origin}/signed-out`],
-            responseType: 'code',
-          },
-        },
-      },
-    },
-  });
+  configureAmplify();
 
   // サインアウト後・認証エラーページは認証不要でレンダリング
   if (isAuthSkipPath() && !authenticated) {
