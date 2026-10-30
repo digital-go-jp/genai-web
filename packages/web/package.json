@@ -36,7 +36,7 @@
     "remark-directive": "^4.0.0",
     "remark-directive-rehype": "^1.0.0",
     "remark-gfm": "^4.0.1",
-    "swr": "^2.5.0",
+    "swr": "^2.5.1",
     "unist-util-visit": "^5.1.0",
     "zustand": "^5.0.14"
   },
