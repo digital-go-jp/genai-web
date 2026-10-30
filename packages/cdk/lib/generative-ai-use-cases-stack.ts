@@ -154,6 +154,7 @@ export class GenerativeAiUseCasesStack extends Stack {
       vpcId: params.vpcIdForInvokeExApp,
       logLevel: params.logLevel,
       exAppInvokeTimeoutSeconds: params.exAppInvokeTimeoutSeconds,
+      exAppInvokableHostnames: params.exAppInvokableHostnames,
       s3FileExpirationDays: params.dataRetentionDays.s3FileExpiration,
       dynamoDbTtlDays: params.dataRetentionDays.dynamoDbTtl,
       envName: params.appEnv,

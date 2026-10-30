@@ -21,6 +21,7 @@ interface TeamAccessControlStackProps extends NestedStackProps {
   vpcId: string | undefined;
   logLevel: StackInput['logLevel'];
   exAppInvokeTimeoutSeconds: number;
+  exAppInvokableHostnames: StackInput['exAppInvokableHostnames'];
   s3FileExpirationDays: number;
   dynamoDbTtlDays: number;
   envName?: string;
@@ -59,6 +60,7 @@ export class TeamAccessControlStack extends NestedStack {
       vpcId: props.vpcId,
       logLevel: props.logLevel,
       exAppInvokeTimeoutSeconds: props.exAppInvokeTimeoutSeconds,
+      exAppInvokableHostnames: props.exAppInvokableHostnames,
       s3FileExpirationDays: props.s3FileExpirationDays,
       dynamoDbTtlDays: props.dynamoDbTtlDays,
       envName: props.envName,

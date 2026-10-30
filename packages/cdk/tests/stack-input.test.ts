@@ -139,3 +139,94 @@ describe('StackInput SAML validation', () => {
     expect(result.samlAuthEnabled).toBe(false);
   });
 });
+
+describe('StackInput exAppInvokableHostnames', () => {
+  test('defaults to [] (deny-all) when omitted', () => {
+    const result = stackInputSchema.parse(baseParams);
+    expect(result.exAppInvokableHostnames).toEqual([]);
+  });
+
+  test.each([
+    ['*'],
+    ['api.allowed.example'],
+    ['*.allowed.example'],
+    [{ regex: 'api\\.allowed\\.example' }],
+    [{ regex: 'API\\.Allowed\\.Example' }],
+    ['api.allowed.example', { regex: '(?:a|b)\\.allowed\\.example' }],
+    ['xn--r8jz45g.jp'],
+    ['[2001:db8::1]'],
+  ])('accepts valid allowlist entry set %j', (...entries) => {
+    const result = stackInputSchema.parse({ ...baseParams, exAppInvokableHostnames: entries });
+    expect(result.exAppInvokableHostnames).toEqual(entries);
+  });
+
+  test.each([
+    [['*.']],
+    [['*..']],
+    [['.']],
+    [['   ']],
+    [[{ regex: '(' }]],
+    [[{ regex: 'a)|(.*' }]],
+    [['https://api.allowed.example']],
+    [['api.allowed.example/v1']],
+    [['api.allowed.example:443']],
+    [['api.*.allowed.example']],
+    [['*allowed.example']],
+    [['例え.jp']],
+    [['2001:db8::1']],
+    [['.example.com']],
+    [['*..example.com']],
+    [['*.203.0.113.10']],
+    [['*.[2001:db8::1]']],
+    [['8.8.8']],
+    [['0x08080808']],
+    [['010.8.8.8']],
+    [['*.8.8.8']],
+    [['[2001:4860:4860:0:0::8888]']],
+    [['[::ffff:8.8.8.8]']],
+    [['api.allowed.example', 'https://chat.allowed.example']],
+    [['*', { regex: '(' }]],
+  ])('rejects degenerate/invalid entry set %j at synth (FR-011)', (entries) => {
+    expect(() =>
+      stackInputSchema.parse({ ...baseParams, exAppInvokableHostnames: entries }),
+    ).toThrow();
+  });
+
+  describe('DNS length limits', () => {
+    const labelOf = (length: number) => 'a'.repeat(length);
+    const hostnameOf253 = [labelOf(63), labelOf(63), labelOf(63), labelOf(61)].join('.');
+    const hostnameOf254 = [labelOf(63), labelOf(63), labelOf(63), labelOf(62)].join('.');
+
+    test('the boundary hostnames are 253 and 254 characters long', () => {
+      expect(hostnameOf253).toHaveLength(253);
+      expect(hostnameOf254).toHaveLength(254);
+    });
+
+    test.each([
+      ['a 253-character hostname', hostnameOf253],
+      ['a 63-character label', `${labelOf(63)}.example`],
+      ['a suffix with a 63-character label', `*.${labelOf(63)}.example`],
+      [
+        'a 251-character suffix, which a 253-character hostname can match',
+        `*.${[labelOf(63), labelOf(63), labelOf(63), labelOf(59)].join('.')}`,
+      ],
+    ])('accepts %s', (_label, entry) => {
+      const result = stackInputSchema.parse({ ...baseParams, exAppInvokableHostnames: [entry] });
+      expect(result.exAppInvokableHostnames).toEqual([entry]);
+    });
+
+    test.each([
+      ['a 254-character hostname', hostnameOf254],
+      ['a 64-character label', `${labelOf(64)}.example`],
+      ['a suffix with a 64-character label', `*.${labelOf(64)}.example`],
+      [
+        'a 252-character suffix, which only hostnames over 253 characters can match',
+        `*.${[labelOf(63), labelOf(63), labelOf(63), labelOf(60)].join('.')}`,
+      ],
+    ])('rejects %s at synth', (_label, entry) => {
+      expect(() =>
+        stackInputSchema.parse({ ...baseParams, exAppInvokableHostnames: [entry] }),
+      ).toThrow(/Invalid exAppInvokableHostnames host pattern/);
+    });
+  });
+});

@@ -5,6 +5,7 @@ import { createExApp, findExAppById } from '../../lambda/repository/exAppReposit
 import { findTeamById } from '../../lambda/repository/teamRepository';
 import * as teamRole from '../../lambda/utils/teamRole';
 import * as apiKey from '../../lambda/utils/apiKey';
+import { EXAPP_INVOKABLE_HOSTNAMES_ENV } from '../../lambda/utils/exAppAllowlist';
 
 vi.mock('../../lambda/repository/exAppRepository');
 vi.mock('../../lambda/repository/teamRepository');
@@ -46,6 +47,7 @@ beforeEach(() => {
   vi.resetModules();
   process.env = { ...originalEnv };
   process.env.APP_ENV = 'test';
+  process.env[EXAPP_INVOKABLE_HOSTNAMES_ENV] = JSON.stringify(['*']);
 });
 
 afterAll(() => {
@@ -680,5 +682,152 @@ describe('copyExApp Lambda handler', () => {
     expect(consoleErrorSpy).toHaveBeenCalled();
 
     consoleErrorSpy.mockRestore();
+  });
+
+  test('コピー元endpointがホワイトリスト外の場合は400を返し、APIキー取得・コピーを行わない', async () => {
+    const teamId = 'test-team-id';
+    const exAppId = 'source-exapp-id';
+    const now = Date.now().toString();
+    process.env[EXAPP_INVOKABLE_HOSTNAMES_ENV] = JSON.stringify(['api.allowed.example']);
+
+    mockedIsSystemAdmin.mockReturnValue(true);
+    mockedIsTeamAdmin.mockResolvedValue(false);
+    mockedFindTeamById.mockResolvedValue({
+      teamId,
+      teamName: 'テストチーム',
+      createdDate: now,
+      updatedDate: now,
+    });
+    mockedFindExAppById.mockResolvedValue({
+      teamId,
+      exAppId,
+      exAppName: '元アプリ',
+      description: '元アプリの概要',
+      howToUse: '元アプリの使い方',
+      endpoint: 'https://api.example.com/original',
+      apiKey: '',
+      placeholder: '{"input": "original"}',
+      config: '{"model": "original"}',
+      systemPrompt: '元プロンプト',
+      systemPromptKeyName: 'system',
+      copyable: true,
+      status: 'published',
+      createdDate: now,
+      updatedDate: now,
+    });
+
+    const event = createAPIGatewayProxyEvent(createValidRequestBody(), teamId, exAppId);
+
+    const result = await handler(event);
+
+    expect(result.statusCode).toBe(400);
+    expect(JSON.parse(result.body)).toEqual({
+      error: '許可されたエンドポイント以外のURLが指定されたか、URLの形式が不正です。',
+    });
+    expect(mockedGetApiKeyValue).not.toHaveBeenCalled();
+    expect(mockedCreateExApp).not.toHaveBeenCalled();
+    expect(mockedSetApiKey).not.toHaveBeenCalled();
+  });
+
+  test.each(['https://169.254.169.254/latest', 'http://api.example.com/original'])(
+    "ホワイトリストが '*' でも、コピー元endpoint %s は400を返し、APIキー取得・コピーを行わない",
+    async (endpoint) => {
+      const teamId = 'test-team-id';
+      const exAppId = 'source-exapp-id';
+      const now = Date.now().toString();
+
+      mockedIsSystemAdmin.mockReturnValue(true);
+      mockedIsTeamAdmin.mockResolvedValue(false);
+      mockedFindTeamById.mockResolvedValue({
+        teamId,
+        teamName: 'テストチーム',
+        createdDate: now,
+        updatedDate: now,
+      });
+      mockedFindExAppById.mockResolvedValue({
+        teamId,
+        exAppId,
+        exAppName: '元アプリ',
+        description: '元アプリの概要',
+        howToUse: '元アプリの使い方',
+        endpoint,
+        apiKey: '',
+        placeholder: '{"input": "original"}',
+        config: '{"model": "original"}',
+        systemPrompt: '元プロンプト',
+        systemPromptKeyName: 'system',
+        copyable: true,
+        status: 'published',
+        createdDate: now,
+        updatedDate: now,
+      });
+
+      const event = createAPIGatewayProxyEvent(createValidRequestBody(), teamId, exAppId);
+
+      const result = await handler(event);
+
+      expect(result.statusCode).toBe(400);
+      expect(mockedGetApiKeyValue).not.toHaveBeenCalled();
+      expect(mockedCreateExApp).not.toHaveBeenCalled();
+      expect(mockedSetApiKey).not.toHaveBeenCalled();
+    },
+  );
+
+  test('コピー元endpointがホワイトリスト内なら正常にコピーできる', async () => {
+    const teamId = 'test-team-id';
+    const exAppId = 'source-exapp-id';
+    const now = Date.now().toString();
+    process.env[EXAPP_INVOKABLE_HOSTNAMES_ENV] = JSON.stringify(['api.example.com']);
+
+    mockedIsSystemAdmin.mockReturnValue(true);
+    mockedIsTeamAdmin.mockResolvedValue(false);
+    mockedFindTeamById.mockResolvedValue({
+      teamId,
+      teamName: 'テストチーム',
+      createdDate: now,
+      updatedDate: now,
+    });
+    mockedFindExAppById.mockResolvedValue({
+      teamId,
+      exAppId,
+      exAppName: '元アプリ',
+      description: '元アプリの概要',
+      howToUse: '元アプリの使い方',
+      endpoint: 'https://api.example.com/original',
+      apiKey: '',
+      placeholder: '{"input": "original"}',
+      config: '{"model": "original"}',
+      systemPrompt: '元プロンプト',
+      systemPromptKeyName: 'system',
+      copyable: true,
+      status: 'published',
+      createdDate: now,
+      updatedDate: now,
+    });
+    mockedGetApiKeyValue.mockResolvedValue('original-api-key');
+    mockedCreateExApp.mockResolvedValue({
+      teamId,
+      exAppId: 'copied-exapp-id',
+      exAppName: 'コピーされたアプリ',
+      description: 'コピーされたアプリの概要',
+      howToUse: 'コピーされたアプリの使い方',
+      endpoint: 'https://api.example.com/original',
+      apiKey: '',
+      placeholder: '{"input": "test"}',
+      config: '{"model": "test"}',
+      systemPrompt: 'テストプロンプト',
+      systemPromptKeyName: 'system',
+      copyable: true,
+      status: 'draft',
+      createdDate: now,
+      updatedDate: now,
+    });
+
+    const event = createAPIGatewayProxyEvent(createValidRequestBody(), teamId, exAppId);
+
+    const result = await handler(event);
+
+    expect(result.statusCode).toBe(200);
+    expect(mockedCreateExApp).toHaveBeenCalled();
   });
 });

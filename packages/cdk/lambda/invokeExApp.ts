@@ -77,6 +77,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
   let dbId = '';
   let baseS3Prefix = '';
   let sessionId: string | undefined;
+  let endpointAccepted = false;
   const requestStartTime = Date.now();
 
   try {
@@ -137,6 +138,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
     }
 
     const validatedEndpoint = await assertPublicEndpointUrl(res.endpoint);
+    endpointAccepted = true;
 
     const apiKeyValue = await getApiKeyValue(teamId, exAppId, APP_ENV);
     if (!apiKeyValue) {
@@ -273,7 +275,9 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
       return createResponse(error.statusCode, JSON.stringify(responseBody));
     } else if (isExAppUrlValidationError(error)) {
       responseBody = {
-        outputs: 'AIアプリのAPIエンドポイントまたはステータスURLが安全ではないため実行できません。',
+        outputs: endpointAccepted
+          ? 'AIアプリの応答（リダイレクトまたはステータスURL）が不正なため実行できません。'
+          : '許可されたエンドポイント以外のURLが指定されたか、URLの形式が不正なためAIアプリの実行はできません。',
       };
       return createResponse(502, JSON.stringify(responseBody));
     } else {

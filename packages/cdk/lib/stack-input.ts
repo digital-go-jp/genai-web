@@ -1,5 +1,6 @@
 import { passwordPolicyInputSchema } from '@genai-web/common';
 import { z } from 'zod';
+import { parseAllowlistEntry } from '../lambda/utils/exAppAllowlist';
 
 /**
  * CDKコンテキストから渡される文字列値を適切な型に変換する
@@ -191,6 +192,27 @@ export const stackInputSchema = z
 
     // ExApp API Timeout Configuration
     exAppInvokeTimeoutSeconds: z.number().min(3).max(300).default(29),
+
+    exAppInvokableHostnames: z
+      .array(
+        z.union([z.string().trim().min(1), z.object({ regex: z.string().trim().min(1) }).strict()]),
+      )
+      .default([])
+      .superRefine((entries, ctx) => {
+        entries.forEach((entry, index) => {
+          if (parseAllowlistEntry(entry) === undefined) {
+            const label =
+              typeof entry === 'object'
+                ? `regex ${JSON.stringify(entry.regex)}`
+                : `host pattern ${JSON.stringify(entry)}`;
+            ctx.addIssue({
+              code: 'custom',
+              path: [index],
+              message: `Invalid exAppInvokableHostnames ${label}: unparseable or degenerate (dropped at runtime, risking unintended deny-all)`,
+            });
+          }
+        });
+      }),
 
     // Data Retention Configuration
     dataRetentionDays: z

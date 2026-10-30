@@ -80,7 +80,18 @@ vpcIdForInvokeExApp: 'vpc-12345678901234567',
 1. AIアプリを再デプロイ
 2. Google Cloud コンソール上で API キーが生成されたら、その API キーをコピー
 
-#### 2.1.3. 源内 Web 側での登録
+#### 2.1.3. 源内 Web の env-parameters の修正
+
+対象環境の env-parameters を開き、 `exAppInvokableHostnames` 配列に、AI アプリのエンドポイントのホスト名を追加してください（例: `https://xxxx-0000-gateway-abcd1234.an.gateway.dev/invoke` なら `xxxx-0000-gateway-abcd1234.an.gateway.dev`）。`https://` やパスは付けません。エンドポイント URL の確認方法は手順2.1.4 を参照してください。  
+デフォルトでは空の配列になっており、許可されていないホスト名のエンドポイントは登録・実行できません。  
+ホスト名の記述形式は `packages/cdk/env-parameters/self-hosting-template.ts` を参考にしてください。  
+変更したら源内 Web を再デプロイしてください。再デプロイするまで、追加したホスト名は反映されません。
+
+> **注意: `*.gateway.dev` でまとめて許可しないでください**  
+> Google Cloud API Gateway の既定のホスト名（`<ゲートウェイ ID>-<ハッシュ>.<リージョン>.gateway.dev`）は、誰でもサブドメインを作れる共有ドメインにあります。`*.gateway.dev` や `*.an.gateway.dev` のように書くと、第三者が自分のプロジェクトで作った API まで許可され、ホワイトリストの効果がほとんどなくなります。  
+> ホスト名は、AI アプリごとに完全一致で追加してください。`*.` は、配下のサブドメインをすべて自組織で管理しているドメインにだけ使ってください。
+
+#### 2.1.4. 源内 Web 側での登録
 
 1. 源内 Web にアクセス
 2. **[アカウント]** > **[チーム管理]** > **[チーム一覧]** へ移動
@@ -107,7 +118,18 @@ vpcIdForInvokeExApp: 'vpc-12345678901234567',
 
 5. `ApiKeyValue` の値の CLI コマンドを実行して API キーを取得します。
 
-#### 2.2.2. 源内 Web 側での登録
+#### 2.2.2. 源内 Web の env-parameters の修正
+
+対象環境の env-parameters を開き、 `exAppInvokableHostnames` 配列に、手順2.2.1で取得した API エンドポイントのホスト名を追加してください（例: `https://xxxxxxxxxx.execute-api.ap-northeast-1.amazonaws.com/prod/` なら `xxxxxxxxxx.execute-api.ap-northeast-1.amazonaws.com`）。`https://` やパスは付けません。  
+デフォルトでは空の配列になっており、許可されていないホスト名のエンドポイントは登録・実行できません。  
+ホスト名の記述形式は `packages/cdk/env-parameters/self-hosting-template.ts` を参考にしてください。  
+変更したら源内 Web を再デプロイしてください。再デプロイするまで、追加したホスト名は反映されません。
+
+> **注意: 共有ドメインを `*.` でまとめて許可しないでください**  
+> AWS API Gateway（`<API ID>.execute-api.<リージョン>.amazonaws.com`）や Google Cloud API Gateway（`<ゲートウェイ ID>-<ハッシュ>.<リージョン>.gateway.dev`）の既定のホスト名は、誰でもサブドメインを作れる共有ドメインにあります。`*.execute-api.ap-northeast-1.amazonaws.com` や `*.gateway.dev` のように書くと、第三者が自分のアカウントで作った API まで許可され、ホワイトリストの効果がほとんどなくなります。  
+> これらのホスト名は、AI アプリごとに完全一致で追加してください。`*.` は、配下のサブドメインをすべて自組織で管理しているドメインにだけ使ってください。
+
+#### 2.2.3. 源内 Web 側での登録
 
 1. 源内 Web にアクセス
 2. **[アカウント]** > **[チーム管理]** > **[チーム一覧]** へ移動
