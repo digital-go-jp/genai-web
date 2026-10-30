@@ -3,7 +3,7 @@
  *  SPDX-License-Identifier: LicenseRef-.amazon.com.-AmznSL-1.0
  *  Licensed under the Amazon Software License  http://aws.amazon.com/asl/
  */
-import { Duration, RemovalPolicy, Stack } from 'aws-cdk-lib';
+import { Annotations, Duration, RemovalPolicy, Stack } from 'aws-cdk-lib';
 import {
   AuthorizationType,
   CfnRestApi,
@@ -36,9 +36,15 @@ import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as sqs from 'aws-cdk-lib/aws-sqs';
 import { NagSuppressions } from 'cdk-nag';
 import { Construct } from 'constructs';
+import { EXAPP_INVOKABLE_HOSTNAMES_ENV } from '../../lambda/utils/exAppAllowlist';
 import { StackInput } from '../stack-input';
 import { InvokeExAppLambdaVpc } from './invoke-exapp-lambda-vpc';
 import { UserIdentifierHmacKey } from './kms';
+
+export const EXAPP_INVOKABLE_HOSTNAMES_DENY_ALL_WARNING_ID =
+  'genai:exapp:invokableHostnamesDenyAll';
+const EXAPP_INVOKABLE_HOSTNAMES_DENY_ALL_WARNING =
+  'exAppInvokableHostnames is empty: every ExApp endpoint is denied on create, update, copy and invoke, and status polling of in-flight async invocations ends in ERROR. Set it to ["*"] to allow any public endpoint, or list the allowed hostnames';
 
 interface TeamAccessControlProps {
   encryptionKey: kms.IKey;
@@ -47,6 +53,7 @@ interface TeamAccessControlProps {
   vpcId: string | undefined;
   logLevel: StackInput['logLevel'];
   exAppInvokeTimeoutSeconds: number;
+  exAppInvokableHostnames: StackInput['exAppInvokableHostnames'];
   s3FileExpirationDays: number;
   dynamoDbTtlDays: number;
   envName?: string;
@@ -60,7 +67,6 @@ interface TeamAccessControlProps {
   modelIds: string[];
   crossAccountBedrockRoleArn?: string | null;
   inferenceProfileMap?: { [modelId: string]: string };
-  // chat と同じ環境変数を配布する。未指定時は空文字 / 0 / [] にフォールバック。
   costConversion?: {
     toCurrency: string;
     rate: number;
@@ -85,6 +91,7 @@ export class TeamAccessControl extends Construct {
     COST_CONVERSION_RATE: string;
     COST_CONVERSION_ALLOWED_FROM: string;
   };
+  private readonly exAppInvokableHostnamesJson: string;
 
   constructor(scope: Construct, id: string, props: TeamAccessControlProps) {
     super(scope, id);
@@ -92,6 +99,13 @@ export class TeamAccessControl extends Construct {
     const { userPool } = props;
     this.userPoolId = userPool.userPoolId;
     this.appEnv = props.envName || '';
+    this.exAppInvokableHostnamesJson = JSON.stringify(props.exAppInvokableHostnames);
+    if (props.exAppInvokableHostnames.length === 0) {
+      Annotations.of(this).addWarningV2(
+        EXAPP_INVOKABLE_HOSTNAMES_DENY_ALL_WARNING_ID,
+        EXAPP_INVOKABLE_HOSTNAMES_DENY_ALL_WARNING,
+      );
+    }
 
     this.costConversionEnv = {
       COST_CONVERSION_TO_CURRENCY: props.costConversion?.toCurrency ?? '',
@@ -461,6 +475,7 @@ export class TeamAccessControl extends Construct {
       environment: {
         TABLE_NAME: table.tableName,
         INVOKE_HISTORY_TABLE_NAME: invokeExAppHistoryTable.tableName,
+        [EXAPP_INVOKABLE_HOSTNAMES_ENV]: this.exAppInvokableHostnamesJson,
         ARTIFACTS_BUCKET_NAME: artifactsBucket.bucketName,
         TTL_DAYS: props.dynamoDbTtlDays.toString(),
         APP_ENV: this.appEnv,
@@ -526,6 +541,7 @@ export class TeamAccessControl extends Construct {
         EXAPP_TABLE_NAME: exAppTable.tableName,
         INVOKE_HISTORY_TABLE_NAME: invokeExAppHistoryTable.tableName,
         POLLING_QUEUE_URL: pollingQueue.queueUrl,
+        [EXAPP_INVOKABLE_HOSTNAMES_ENV]: this.exAppInvokableHostnamesJson,
         ARTIFACTS_BUCKET_NAME: artifactsBucket.bucketName,
         TTL_DAYS: props.dynamoDbTtlDays.toString(),
         APP_ENV: this.appEnv,
@@ -960,7 +976,7 @@ export class TeamAccessControl extends Construct {
         EXAPP_TABLE_NAME: this.exAppTable.tableName,
         INVOKE_HISTORY_TABLE_NAME: this.invokeExAppHistoryTable.tableName,
         APP_ENV: this.appEnv,
-        // 履歴取得 API などでも summarizeFromUsageMetadata 経由で converted を付与するため
+        [EXAPP_INVOKABLE_HOSTNAMES_ENV]: this.exAppInvokableHostnamesJson,
         ...this.costConversionEnv,
       },
     });

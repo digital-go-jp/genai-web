@@ -24,7 +24,10 @@ export const handler = createApiHandler(async (event) => {
     await assertPublicEndpointUrl(req.endpoint);
   } catch (error) {
     if (isExAppUrlValidationError(error)) {
-      throw new HttpError(400, 'APIエンドポイントには公開 HTTPS URL を指定してください。');
+      throw new HttpError(
+        400,
+        '許可されたエンドポイント以外のURLが指定されたか、URLの形式が不正です。',
+      );
     }
     throw error;
   }

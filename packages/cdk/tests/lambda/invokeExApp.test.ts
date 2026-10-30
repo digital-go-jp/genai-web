@@ -426,10 +426,12 @@ describe('invokeExApp Lambda handler', () => {
     expect(result.statusCode).toBe(502);
     const body = JSON.parse(result.body);
     expect(body.outputs).toBe(
-      'AIアプリのAPIエンドポイントまたはステータスURLが安全ではないため実行できません。',
+      '許可されたエンドポイント以外のURLが指定されたか、URLの形式が不正なためAIアプリの実行はできません。',
     );
     expect(getApiKeyValue).not.toHaveBeenCalled();
     expect(requestValidatedExAppUrl).not.toHaveBeenCalled();
+    const HISTORY_STATUS_ARG_INDEX = 10;
+    expect(vi.mocked(createInvokeExAppHistory).mock.lastCall?.[HISTORY_STATUS_ARG_INDEX]).toBe('ERROR');
   });
 
   it('非同期レスポンスのstatus_urlが同一origin相対URLでない場合はSQS送信しない', async () => {
@@ -445,6 +447,25 @@ describe('invokeExApp Lambda handler', () => {
 
     expect(result.statusCode).toBe(502);
     expect(mockSqsSend).not.toHaveBeenCalled();
+    expect(JSON.parse(result.body).outputs).toBe(
+      'AIアプリの応答（リダイレクトまたはステータスURL）が不正なため実行できません。',
+    );
+  });
+
+  it('外部APIがリダイレクトを返した場合は、ホワイトリストの拒否と区別した文言で502エラーを返す', async () => {
+    mockRequestValidatedExAppUrl.mockRejectedValue(
+      new UnsafeExAppUrlError('AIアプリのリダイレクト応答は許可されていません。'),
+    );
+
+    const event = createEvent(createValidBody());
+    const result: APIGatewayProxyResult = await handler(event);
+
+    expect(result.statusCode).toBe(502);
+    expect(JSON.parse(result.body).outputs).toBe(
+      'AIアプリの応答（リダイレクトまたはステータスURL）が不正なため実行できません。',
+    );
+    const HISTORY_STATUS_ARG_INDEX = 10;
+    expect(vi.mocked(createInvokeExAppHistory).mock.lastCall?.[HISTORY_STATUS_ARG_INDEX]).toBe('ERROR');
   });
 
   it('外部APIが4xxエラーを返した場合、エラーメトリクスを発行する', async () => {

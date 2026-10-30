@@ -23,6 +23,27 @@ export const selfHostingTemplateParams: Partial<StackInput> = {
   appEnv: 'your-environment-name',
 
   /**
+   * ExApp（AIアプリ）が登録・実行できる API エンドポイントのホスト名ホワイトリスト
+   * 必須: No（未指定・空配列は deny-all = ExApp 全停止）
+   * 許可される値: ホスト完全一致 / '*.suffix' / '*'（全許可）/ { regex } (hostname 完全アンカー)
+   *   文字列はホスト名だけを書く（https://・パス・ポートは書けない。ポートでは絞れず、どのポートにも一致する）
+   *   日本語ドメインは punycode（xn--…）、IPv6 は角括弧付き（[2001:db8::1]）で書く。全体 253 文字・ラベル 63 文字まで
+   * 例:
+   *   ['api.example.com']                         … api.example.com だけを許可
+   *   ['*.example.com']                           … example.com のサブドメインすべて（example.com 自体は含まない）
+   *   ['example.com', '*.example.com']            … example.com とそのサブドメインすべて
+   *   [{ regex: 'app-[0-9]+\\.example\\.com' }]  … app-1.example.com, app-42.example.com など
+   * 注意: '*.suffix' と regex は、配下のサブドメインをすべて自組織で管理しているドメインにだけ使う。
+   *       AWS API Gateway（*.execute-api.<region>.amazonaws.com）や GCP API Gateway（*.gateway.dev）は
+   *       誰でもサブドメインを作れる共有ドメインなので、まとめて許可すると第三者の API まで通る。完全一致で列挙する
+   * 注意: できるだけ完全一致・'*.suffix' で書く。regex では量指定子を入れ子にしない（例: '(.*\\.)*example\\.com'）。
+   *       入れ子にすると、長いホスト名の登録で照合時間が指数的に増え、ExApp の Lambda が止まる
+   * 注意: '*' を外してホスト名の列挙に変える前に、登録済みの全チームの AI アプリのエンドポイントを棚卸しする。
+   *       列挙から漏れた AI アプリは、実行も編集もできなくなる
+   */
+  exAppInvokableHostnames: [],
+
+  /**
    * ログレベル
    * 必須: Yes
    * 許可される値: 'DEBUG', 'INFO', 'WARN', 'ERROR'

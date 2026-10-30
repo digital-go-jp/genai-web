@@ -243,7 +243,7 @@ describe('createExApp Lambda handler', () => {
 
     expect(result.statusCode).toBe(400);
     expect(JSON.parse(result.body)).toEqual({
-      error: 'APIエンドポイントには公開 HTTPS URL を指定してください。',
+      error: '許可されたエンドポイント以外のURLが指定されたか、URLの形式が不正です。',
     });
     expect(mockedCreateExApp).not.toHaveBeenCalled();
     expect(mockedSetApiKey).not.toHaveBeenCalled();

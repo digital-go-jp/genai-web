@@ -1,5 +1,13 @@
 import ipaddr = require('ipaddr.js');
 
+import {
+  EXAPP_INVOKABLE_HOSTNAMES_ENV,
+  isWithinDnsLengthLimits,
+  matchEndpointAllowlist,
+  normalizeHostname,
+  parseAllowlistPatterns,
+} from './exAppAllowlist';
+
 const MAX_ENDPOINT_URL_LENGTH = 4096;
 const MAX_STATUS_URL_LENGTH = 2048;
 
@@ -22,17 +30,6 @@ export type ExAppHttpRequestOptions = {
 
 export type ExAppHttpResponse = Pick<Response, 'ok' | 'status' | 'text' | 'json'>;
 
-const normalizeIpLiteral = (hostname: string): string =>
-  hostname.startsWith('[') && hostname.endsWith(']') ? hostname.slice(1, -1) : hostname;
-
-const trimTrailingDots = (hostname: string): string => {
-  let end = hostname.length;
-  while (end > 0 && hostname.charCodeAt(end - 1) === 46) {
-    end -= 1;
-  }
-  return hostname.slice(0, end);
-};
-
 const hasUnsafeRawCharacters = (value: string): boolean =>
   value.trim() !== value || hasControlCharacter(value);
 
@@ -47,9 +44,12 @@ const hasControlCharacter = (value: string): boolean => {
 };
 
 const assertAllowedHostname = (hostname: string): void => {
-  const normalizedHostname = trimTrailingDots(normalizeIpLiteral(hostname).toLowerCase());
+  const normalizedHostname = normalizeHostname(hostname);
   if (normalizedHostname.length === 0) {
     throw new UnsafeExAppUrlError('APIエンドポイントのホスト名を指定してください。');
+  }
+  if (!isWithinDnsLengthLimits(normalizedHostname)) {
+    throw new UnsafeExAppUrlError('APIエンドポイントのホスト名が長すぎます。');
   }
   if (normalizedHostname === 'localhost' || normalizedHostname.endsWith('.localhost')) {
     throw new UnsafeExAppUrlError('APIエンドポイントのホスト名は許可されていません。');
@@ -97,9 +97,17 @@ export const parseHttpsUrl = (value: string): URL => {
   return url;
 };
 
+const assertHostnameAllowlisted = (hostname: string): void => {
+  const patterns = parseAllowlistPatterns(process.env[EXAPP_INVOKABLE_HOSTNAMES_ENV]);
+  if (!matchEndpointAllowlist(hostname, patterns)) {
+    throw new UnsafeExAppUrlError('APIエンドポイントは許可されていません。');
+  }
+};
+
 export const assertPublicEndpointUrl = async (value: string): Promise<ValidatedExAppUrl> => {
   const url = parseHttpsUrl(value);
   assertAllowedHostname(url.hostname);
+  assertHostnameAllowlisted(url.hostname);
   return { url };
 };
 
